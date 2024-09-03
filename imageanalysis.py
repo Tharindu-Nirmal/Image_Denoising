@@ -72,8 +72,8 @@ def visualize_tiles(tiles_array):
             axes[i, j].imshow(tiles_array[i, j, :, :], vmin=0, vmax=255)
             axes[i, j].axis('off')  # Turn off axis labels
 
-    plt.show()
-    plt.savefig(os.path.join(results_dir, "image_%d_tiled.png"%(image_number)), bbox_inches='tight', pad_inches=0)
+    # plt.show()
+    plt.savefig(os.path.join(results_dir, "image_%d_tiled.png"%(image_number)))
     plt.close()
 
 visualize_tiles(im_tiles2d)
@@ -90,19 +90,9 @@ https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNe
 Y = im_tiles1d
 N, n = Y.shape
 #3600,64
-
-def objective(beta, A, b, alpha, l1_ratio):
-    # Define the objective function similar to ElasticNet
-    loss = 0.5 * np.sum((A @ beta - b) ** 2)
-    l1_penalty = alpha * l1_ratio * np.sum(np.abs(beta))
-    l2_penalty = 0.5 * alpha * (1 - l1_ratio) * np.sum(beta ** 2)
-    return loss + l1_penalty + l2_penalty
-
-# Define constraints
-cons = [{'type': 'eq', 'fun': lambda beta: np.sum(beta) - 1},
-        {'type': 'ineq', 'fun': lambda beta: beta}]  # Ensures positivity
-
 B = np.zeros((N, N))
+
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'w')
 for i in range(N):
     
     y_i = Y[i, :]
@@ -117,26 +107,23 @@ for i in range(N):
     l1_ratio = 1  # 1.0 gives Lasso (L1) regularization only
 
     # Initialize the ElasticNet model with non-negativity constraint
-    # Initial guess
-    beta_init = np.ones(A.shape[1]) / A.shape[1]
+    enet = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, positive=True, fit_intercept=False, max_iter=5000)
+    enet.fit(A, b)
+    result = enet.coef_
 
-    # Perform optimization
-    result = minimize(objective, beta_init, args=(A, b, alpha, l1_ratio),
-                    constraints=cons, bounds=[(0, None)] * A.shape[1])
-    beta_optimized = result.x
-    
     if i % 10 == 0:
-        print('%.d th tile result:' % (i))
-        print('L1 norm b', np.linalg.norm(b, 1))
-        print('L1 norm x', np.linalg.norm(beta_optimized, 1))
-        print('sum of x', np.sum(beta_optimized))
-        print('L2 norm Ax-b', np.linalg.norm(A @ beta_optimized - b, 2))
+        print('%.d th tile result:' % (i), file=output_file)
+        print('L1 norm b', np.linalg.norm(b, 1), file=output_file)
+        print('L1 norm x', np.linalg.norm(result, 1), file=output_file)
+        print('sum of x', np.sum(result), file=output_file)
+        print('L2 norm Ax-b', np.linalg.norm(A @ result - b, 2), file=output_file)
     
     # Insert zero at the i-th position to maintain original dimensions
-    beta_i = np.insert(beta_optimized, i, 0)
+    beta_i = np.insert(result, i, 0)
     B[i, :] = np.abs(beta_i)
 
-print("checking rough beta range:", B[1])
+print("checking rough beta range:", B[1], file=output_file)
+output_file.close()
 
 # Step 2: Construct similarity graph
 W = np.abs(B) + np.abs(B.T)
@@ -162,3 +149,29 @@ S = np.eye(L_norm.shape[0]) - L_norm
 # Step 6: Spectral clustering
 spectral_clustering = SpectralClustering(n_clusters=L_hat, affinity='precomputed', random_state=0)
 labels = spectral_clustering.fit_predict(W)
+
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print('Extimated_Clusters:', L_hat, file=output_file)
+print('shape of labels:',labels.shape, file=output_file)
+
+print('determinant of W similarity matrix:', np.linalg.det(W), file=output_file)
+output_file.close()
+
+block_size = 128
+block_cnt = int(im_tiles1d.shape[0]/block_size)
+#8
+
+#subplot with a grid of tiles
+fig, axes = plt.subplots(block_cnt, block_cnt, figsize=(30, 30))
+
+# Iterate through each tile and display
+for i in range(block_cnt):
+    for j in range(block_cnt):
+        W_matrix = W[i*block_size:(i+1)*block_size, j*block_size:(j+1)*block_size]
+        normalized_W_matrix = (W_matrix - np.min(W_matrix)) / (np.max(W_matrix) - np.min(W_matrix))
+        axes[i, j].imshow(normalized_W_matrix, cmap='viridis', interpolation='none')
+        axes[i, j].axis('off')  # Turn off axis labels
+
+# plt.show()
+plt.savefig(os.path.join(results_dir, "image_%d_similarities.png"%(image_number)))
+plt.close()
