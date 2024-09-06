@@ -16,7 +16,7 @@ from sklearn.linear_model import ElasticNet
 import spgl1
 
 image_number = 1
-results_dir = "results/elasticnet"
+results_dir = "results/spgl_lasso"
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 # dimensionality (N) of subspace = 64
