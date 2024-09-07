@@ -92,7 +92,7 @@ for i in range(N):
     b = y_i.T       # (n,)
 
     # Set alpha to control regularization, l1_ratio for L1 regularization
-    alpha = 20   # Adjust this value as needed
+    alpha = 10   # Adjust this value as needed
     l1_ratio = 1  # 1.0 gives Lasso (L1) regularization only
 
     # Initialize the ElasticNet model with non-negativity constraint

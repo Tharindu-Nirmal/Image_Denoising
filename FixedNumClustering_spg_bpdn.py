@@ -18,9 +18,10 @@ import spgl1
 image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
-step_size = 4 
+step_size = 8
+std_dev = 20
 
-results_dir = "results/overlapped_spgl_lasso/tilw%d_step%d_"%(tile_w,step_size)
+results_dir = "results/FixedNum_spgl_bpdn/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -36,7 +37,6 @@ plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d.png"%(image_number)), bbox_inches='tight', pad_inches=0)
 plt.close()
 
-std_dev = 20
 noisy_image = np.uint8(np.clip(image + np.random.normal(scale=std_dev, size=image.shape), 0, 255))
 plt.imshow(noisy_image)
 plt.colorbar()
@@ -139,10 +139,10 @@ for i in range(N):
     A = y_others.T  # Transpose to match dimensions (n, N-1)
     b = y_i.T       # (n,)
 
-    tau = 1
+    # tau = 1
     # sigma = 100 #fixed sigma
-    # sigma = 0.05 * np.linalg.norm(b, 2)
-    sol_x, resid, grad, info = spgl1.spg_lasso(A, b,tau, verbosity=1)
+    sigma = 0.05 * np.linalg.norm(b, 2)
+    sol_x, resid, grad, info = spgl1.spg_bpdn(A, b,sigma, verbosity=1)
 
     # print(type(sol_x)) --> <class 'numpy.ndarray'>
             
@@ -179,7 +179,9 @@ sorted_eigenvalues = np.sort(eigenvalues)[::-1]
 differences = np.diff(sorted_eigenvalues)
 i_max = np.argmax(differences)
 N = len(sorted_eigenvalues)
-L_hat = N - (i_max + 1)
+
+#We fix this since the algorithms' value just  blows up
+L_hat = 20 #N - (i_max + 1)
 
 # To get the similarity matrix from the normalized Laplacian, we can use: S = I - L
 S = np.eye(L_norm.shape[0]) - L_norm
