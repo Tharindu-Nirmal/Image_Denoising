@@ -21,7 +21,7 @@ tile_w = 8
 step_size = 8
 std_dev = 20
 
-results_dir = "results/FixedNum_spgl_bpdn/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
+results_dir = "results/FixedNum_spgl_elasticnet/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 

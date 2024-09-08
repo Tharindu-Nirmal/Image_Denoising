@@ -17,8 +17,8 @@ import spgl1
 
 image_number = 3
 # dimensionality (N) of subspace = 64
-tile_w = 8
-step_size = 4 
+tile_w = 16
+step_size = 16 
 
 results_dir = "results/overlapped_spgl_lasso/tilw%d_step%d_"%(tile_w,step_size)
 if not os.path.exists(results_dir):
@@ -284,7 +284,7 @@ fig.colorbar(img3, ax=axes[2], orientation='vertical')
 plt.savefig(os.path.join(results_dir, "image_%d_top3_similarity patches.png"%(image_number)))
 plt.close()
 
-nice_indices = [10,300,330]
+nice_indices = [10,100,200]
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 data1 = im_tiles1d[nice_indices[0]]
 data2 = im_tiles1d[nice_indices[1]]
@@ -338,7 +338,7 @@ plt.close()
 
 
 plt.figure(figsize=(12, 6))
-patch_num_ex = 328
+patch_num_ex = 250
 data = W[patch_num_ex,:]
 
 #sorted values
