@@ -15,11 +15,11 @@ from skimage.metrics import structural_similarity as ssim
 from sklearn.linear_model import ElasticNet
 import spgl1
 
-image_number = 1
+image_number = 7
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8
-std_dev = 30
+std_dev = 50
 
 results_dir = "results/FixedNum_spgl_elasticnet/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
@@ -28,9 +28,12 @@ if not os.path.exists(results_dir):
  
 image = cv2.imread(f"Dataset/Image{image_number}.png")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-print(image.shape)
+
 mindim = np.min(image.shape)
+mindim = np.min(image.shape)
+mindim = int((mindim // tile_w) * tile_w)
 image = image[:mindim, :mindim]
+print("image shape: ", image.shape)
 
 plt.imshow(image)
 plt.colorbar()

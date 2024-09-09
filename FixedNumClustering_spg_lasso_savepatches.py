@@ -16,13 +16,13 @@ from sklearn.linear_model import ElasticNet
 from PIL import Image
 import spgl1
 
-image_number = 3
+image_number = 6
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
 std_dev = 10
 
-results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
+results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d/image%d"%(tile_w,step_size,std_dev,image_number)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -30,8 +30,11 @@ if not os.path.exists(results_dir):
 image = cv2.imread(f"Dataset/Image{image_number}.png")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 print(image.shape)
+
 mindim = np.min(image.shape)
+mindim = int((mindim // tile_w) * tile_w)
 image = image[:mindim, :mindim]
+print("image shape: ", image.shape)
 
 plt.imshow(image)
 plt.colorbar()
