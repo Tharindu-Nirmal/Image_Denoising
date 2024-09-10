@@ -19,7 +19,7 @@ image_number = 7
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8
-std_dev = 10
+std_dev = 5
 
 results_dir = "results/FixedNum_spgl_bpdn/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
@@ -543,7 +543,7 @@ def visualise_approx(im_tiles1d, cluster_indices):
 
 approx_image = visualise_approx(im_tiles1d, Spectral_cluster_indices)
 approx_image = approx_image[:mindim,:mindim]
-image = image[:,mindim, :mindim]
+image = image[:mindim, :mindim]
 
 plt.imshow(approx_image)
 plt.colorbar()

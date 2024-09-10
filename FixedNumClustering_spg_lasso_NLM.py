@@ -13,16 +13,15 @@ from scipy.spatial.distance import cdist
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.metrics import structural_similarity as ssim
 from sklearn.linear_model import ElasticNet
-from PIL import Image
 import spgl1
 
-image_number = 3
+image_number = 6
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 10
+std_dev = 100
 
-results_dir = "results/FixedNum_spgl_bpdn/tilw%d_step%d_noise%d/image%d"%(tile_w,step_size,std_dev,image_number)
+results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -30,7 +29,6 @@ if not os.path.exists(results_dir):
 image = cv2.imread(f"Dataset/Image{image_number}.png")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 print(image.shape)
-
 mindim = np.min(image.shape)
 mindim = int((mindim // tile_w) * tile_w)
 image = image[:mindim, :mindim]
@@ -144,10 +142,10 @@ for i in range(N):
     A = y_others.T  # Transpose to match dimensions (n, N-1)
     b = y_i.T       # (n,)
 
-    # tau = 1
+    tau = 1
     # sigma = 100 #fixed sigma
-    sigma = 0.05 * np.linalg.norm(b, 2)
-    sol_x, resid, grad, info = spgl1.spg_bpdn(A, b, sigma, verbosity=1)
+    # sigma = 0.05 * np.linalg.norm(b, 2)
+    sol_x, resid, grad, info = spgl1.spg_lasso(A, b,tau, verbosity=1)
 
     # print(type(sol_x)) --> <class 'numpy.ndarray'>
             
@@ -220,6 +218,150 @@ for i in range(block_cnt):
 plt.savefig(os.path.join(results_dir, "image_%d_similarities.png"%(image_number)))
 plt.close()
 
+plt.figure(figsize=(12, 6))
+patch_num_ex = 3
+data = W[patch_num_ex,:]
+
+#sorted values
+top_count = 5
+top_indices = np.argpartition(data, -top_count)[-top_count:]
+top_indices = top_indices[np.argsort(data[top_indices])][::-1]
+
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print("top %d similarities are in these indices in order"%(top_count) ,top_indices, file=output_file)
+output_file.close()
+
+plt.bar(range(len(data)), data)
+plt.xlabel('patch number')
+plt.ylabel('value in similarity graph')
+plt.ylim(0, 1)
+plt.title('variation in simillarity scores with the %d th patch'%(patch_num_ex))
+plt.savefig(os.path.join(results_dir, "image_%d_similarity_w_%d th patch.png"%(image_number, patch_num_ex)))
+plt.close()
+
+plt.figure(figsize=(12, 6))
+patch_num_ex = 7
+data = W[patch_num_ex,:]
+
+#sorted values
+top_count = 5
+top_indices = np.argpartition(data, -top_count)[-top_count:]
+top_indices = top_indices[np.argsort(data[top_indices])][::-1]
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print("top %d similarities are in these indices in order"%(patch_num_ex) ,top_indices, file=output_file)
+output_file.close()
+
+
+plt.bar(range(len(data)), data)
+plt.xlabel('patch number')
+plt.ylabel('value in similarity graph')
+plt.ylim(0, 1)
+plt.title('variation in simillarity scores with the %d th patch'%(patch_num_ex))
+plt.savefig(os.path.join(results_dir, "image_%d_similarity_w_%d th patch.png"%(image_number, patch_num_ex)))
+plt.close()
+
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+data1 = im_tiles1d[top_indices[0]]
+data2 = im_tiles1d[top_indices[1]]
+# data2 = im_tiles1d[15]
+data3 = im_tiles1d[top_indices[2]]
+
+# option 1
+vmin = min(data1.min(), data2.min(), data3.min())
+vmax = max(data1.max(), data2.max(), data3.max())
+
+# option 2
+# vmin = 0
+# vmax = 255
+
+img1 = axes[0].imshow(data1.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[0].set_title('Highest patch')
+
+img2 = axes[1].imshow(data2.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[1].set_title('2nd highest patch')
+
+img3 = axes[2].imshow(data3.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[2].set_title('3rd highest patch')
+
+fig.colorbar(img1, ax=axes[0], orientation='vertical')
+fig.colorbar(img2, ax=axes[1], orientation='vertical')
+fig.colorbar(img3, ax=axes[2], orientation='vertical')
+plt.savefig(os.path.join(results_dir, "image_%d_top3_similarity patches.png"%(image_number)))
+plt.close()
+
+nice_indices = [10,300,330]
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+data1 = im_tiles1d[nice_indices[0]]
+data2 = im_tiles1d[nice_indices[1]]
+data3 = im_tiles1d[nice_indices[2]]
+
+# option 1
+# vmin = min(data1.min(), data2.min(), data3.min())
+# vmax = max(data1.max(), data2.max(), data3.max())
+
+# option 2
+vmin = 0
+vmax = 255
+
+img1 = axes[0].imshow(data1.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[0].set_title('patch selection 1')
+
+img2 = axes[1].imshow(data2.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[1].set_title('patch selection 2')
+
+img3 = axes[2].imshow(data3.reshape(tile_w,tile_w), cmap='viridis', vmin=vmin, vmax=vmax)
+axes[2].set_title('patch selection 3')
+
+fig.colorbar(img1, ax=axes[0], orientation='vertical')
+fig.colorbar(img2, ax=axes[1], orientation='vertical')
+fig.colorbar(img3, ax=axes[2], orientation='vertical')
+plt.savefig(os.path.join(results_dir, "image_%d_interesting patches.png"%(image_number)))
+plt.close()
+
+
+
+plt.figure(figsize=(12, 6))
+patch_num_ex = 10
+data = W[patch_num_ex,:]
+
+#sorted values
+top_count = 5
+top_indices = np.argpartition(data, -top_count)[-top_count:]
+top_indices = top_indices[np.argsort(data[top_indices])][::-1]
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print("top %d similarities are in these indices in order"%(patch_num_ex) ,top_indices, file=output_file)
+output_file.close()
+
+plt.bar(range(len(data)), data)
+plt.xlabel('patch number')
+plt.ylabel('value in similarity graph')
+plt.ylim(0, 1)
+plt.title('variation in simillarity scores with the %d th patch'%(patch_num_ex))
+plt.savefig(os.path.join(results_dir, "image_%d_simil_w_patch_%d.png"%(image_number, patch_num_ex)))
+plt.close()
+
+
+
+plt.figure(figsize=(12, 6))
+patch_num_ex = 328
+data = W[patch_num_ex,:]
+
+#sorted values
+top_count = 5
+top_indices = np.argpartition(data, -top_count)[-top_count:]
+top_indices = top_indices[np.argsort(data[top_indices])][::-1]
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print("top %d similarities are in these indices in order"%(patch_num_ex) ,top_indices, file=output_file)
+output_file.close()
+
+
+plt.bar(range(len(data)), data)
+plt.xlabel('patch number')
+plt.ylabel('value in similarity graph')
+plt.ylim(0, 1)
+plt.title('variation in simillarity scores with the %d th patch'%(patch_num_ex))
+plt.savefig(os.path.join(results_dir, "image_%d_simil_w_patch_%d.png"%(image_number, patch_num_ex)))
+plt.close()
 
 Spectral_cluster_indices = labels
 num_clusters = L_hat
@@ -238,14 +380,11 @@ def calculate_medoid(cluster):
 
     return medoid
 
-def get_cluster_medoids(data, cluster_indices, patch_size=(tile_w, tile_w), save_examples=True, examples_per_cluster=10):
+def get_cluster_medoids(data, cluster_indices):
     """
     Inputs:
     data: an mxN array of m data vectors (points)
     cluster_indices: an mx1 array of m cluster indices
-    patch_size: tuple, size of the patch to reshape the data (default is 8x8)
-    save_examples: boolean, whether to save example patches or not
-    examples_per_cluster: integer, the number of examples to save from each cluster
 
     Returns:
     clusters: a dictionary, indexed by cluster number and values are clustered arrays of data
@@ -265,33 +404,6 @@ def get_cluster_medoids(data, cluster_indices, patch_size=(tile_w, tile_w), save
     # Calculate medoid for each cluster
     medoids = {cluster: calculate_medoid(np.array(points)) for cluster, points in clusters.items()}
     means = {cluster: np.mean(np.array(points), axis=0) for cluster, points in clusters.items()}
-
-    if save_examples:
-        
-        for cluster, points in clusters.items():
-            cluster_dir = os.path.join(results_dir, f"cluster_{cluster}")
-            if not os.path.exists(cluster_dir):
-                os.makedirs(cluster_dir)
-            
-            # Select patches to save (up to `examples_per_cluster` patches)
-            num_patches = min(len(points), examples_per_cluster)
-            selected_patches = np.array(points)[:num_patches]
-
-            output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
-            print('Number_of_Clusters in Cluster %d: '%(cluster), len(points), file=output_file)
-            output_file.close()
-
-            # Save each selected patch as an image
-            for i, patch in enumerate(selected_patches):
-                patch_image = patch.reshape(patch_size)  # Reshape to 8x8 or specified patch size
-                img = Image.fromarray(patch_image)
-                
-                # Convert to uint8 if necessary (assuming patch values are between 0 and 255)
-                if img.mode != 'L':
-                    img = img.convert('L')
-
-                # Save the patch as an image
-                img.save(os.path.join(cluster_dir, f"patch_{i}.png"))
 
     return clusters, medoids, means
 

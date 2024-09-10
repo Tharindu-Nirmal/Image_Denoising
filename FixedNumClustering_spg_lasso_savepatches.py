@@ -16,7 +16,7 @@ from sklearn.linear_model import ElasticNet
 from PIL import Image
 import spgl1
 
-image_number = 6
+image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
@@ -276,6 +276,10 @@ def get_cluster_medoids(data, cluster_indices, patch_size=(tile_w, tile_w), save
             # Select patches to save (up to `examples_per_cluster` patches)
             num_patches = min(len(points), examples_per_cluster)
             selected_patches = np.array(points)[:num_patches]
+
+            output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+            print('Number_of_Clusters in Cluster %d: '%(cluster), len(points), file=output_file)
+            output_file.close()
 
             # Save each selected patch as an image
             for i, patch in enumerate(selected_patches):
