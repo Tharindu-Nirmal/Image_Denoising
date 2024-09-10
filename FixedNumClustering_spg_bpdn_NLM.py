@@ -20,9 +20,9 @@ image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 50
+std_dev = 5
 
-results_dir = "results/FixedNum_spgl_lasso_NLM/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
+results_dir = "results/FixedNum_spgl_bpdn_NLM/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -46,6 +46,16 @@ plt.imshow(noisy_image)
 plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d.png"%(image_number)), bbox_inches='tight', pad_inches=0)
 plt.close()
+
+sigma_est = np.mean(estimate_sigma(noisy_image, multichannel=False))
+
+# Apply Non-Local Means denoising
+denoised_nlm_image = denoise_nl_means(noisy_image, 
+                                  h=1.15 * sigma_est,  # filter strength
+                                  fast_mode=True, 
+                                  patch_size=8,        # Size of patches to compare
+                                  patch_distance=16,    # Max distance to search for patches
+                                  multichannel=False)  # Use False for 2D grayscale image
 
 def return_overlapping_tiles(image, tile_width, step_size):
     """
@@ -143,10 +153,10 @@ for i in range(N):
     A = y_others.T  # Transpose to match dimensions (n, N-1)
     b = y_i.T       # (n,)
 
-    tau = 1
+    # tau = 1
     # sigma = 100 #fixed sigma
-    # sigma = 0.05 * np.linalg.norm(b, 2)
-    sol_x, resid, grad, info = spgl1.spg_lasso(A, b,tau, verbosity=1)
+    sigma = 0.05 * np.linalg.norm(b, 2)
+    sol_x, resid, grad, info = spgl1.spg_bpdn(A, b,sigma, verbosity=1)
 
     # print(type(sol_x)) --> <class 'numpy.ndarray'>
             
@@ -482,7 +492,7 @@ for i, (cluster_key, points) in enumerate(centered_clusters.items()):
     print('Cluster compression when pruning %.2f variance is %.4f'%(t_exp, dynamic_basis.shape[0]/points.shape[0]))
     print('--------------------')
 
-def non_local_means_rowwise(data_vectors, cluster_key, h=1):
+def non_local_means_rowwise(data_vectors, h=0.1):
     """
     Apply Non-Local Means (NLM) denoising to each row of data_vectors based on all other rows.
 
@@ -510,7 +520,7 @@ def non_local_means_rowwise(data_vectors, cluster_key, h=1):
         weights /= np.sum(weights)  # Normalize weights
         
         # Compute the denoised value for row i by taking the weighted average of all rows
-        denoised_data[i] = np.sum(weights[:, None] * data_vectors, axis=0) #+ cluster_means[cluster_key]
+        denoised_data[i] = np.sum(weights[:, None] * data_vectors, axis=0)
     
     return np.array(denoised_data)
 
@@ -526,12 +536,12 @@ def non_local_means_rowwise(data_vectors, cluster_key, h=1):
 #     # print(errors.shape)
 #     return approximations, errors
 
-def fit_to_basis(data_vectors, cluster_key, basis_vectors):
+def fit_to_basis(data_vectors, basis_vectors):
     """ 
     basis_vectors : an nxN array with a basis vector(N-dimensional) in each row 
     data_vectors : an mxN array with m examples of (N-dimensional) data.
     """ 
-    approximations = non_local_means_rowwise(np.array(data_vectors), cluster_key, h=1)
+    approximations = non_local_means_rowwise(np.array(data_vectors), h=1.15 * sigma_est)
     errors = np.linalg.norm(data_vectors - approximations , axis=1)
     # print(errors.shape)
     return approximations, errors
@@ -539,8 +549,8 @@ def fit_to_basis(data_vectors, cluster_key, basis_vectors):
 dyn_errors = []
 fix_errors = []
 for i, (cluster_key, points) in enumerate(clustered_data.items()):
-    dyn_approx, dyn_errs = fit_to_basis(clustered_data[cluster_key],cluster_key, dynamic_psi[cluster_key])
-    fix_approx, fix_errs = fit_to_basis(clustered_data[cluster_key],cluster_key, fixed_psi[cluster_key])
+    dyn_approx, dyn_errs = fit_to_basis(clustered_data[cluster_key], dynamic_psi[cluster_key])
+    fix_approx, fix_errs = fit_to_basis(clustered_data[cluster_key], fixed_psi[cluster_key])
     dyn_errors.append(np.mean(dyn_errs))
     fix_errors.append(np.mean(fix_errs))
     print(" cluster %d has error after fitting: \n dynamic basis selection: %.4f \n fixed top %.2f: %.4f \n ------ "%(i, np.mean(dyn_errs), dim_comp, np.mean(fix_errs)))
@@ -567,7 +577,7 @@ def visualise_approx(im_tiles1d, cluster_indices):
     approx_data1d = np.zeros_like(im_tiles1d)
     error_data = np.zeros_like(im_tiles1d)
     for i in range(len(cluster_indices)):
-        fix_approx, fix_errs = fit_to_basis(im_tiles1d[i][np.newaxis,:], cluster_indices[i], fixed_psi[cluster_indices[i]])
+        fix_approx, fix_errs = fit_to_basis(im_tiles1d[i][np.newaxis,:],fixed_psi[cluster_indices[i]])
         approx_data1d[i] = fix_approx
         error_data[i] = fix_errs
 
@@ -593,15 +603,24 @@ plt.close()
 MSE = np.mean(np.square(approx_image.astype(np.float32) - image.astype(np.float32)))
 PSNR =cv2.PSNR(image.astype(np.float32), approx_image.astype(np.float32))
 ssim_value, ssim_map = ssim(approx_image.astype(np.float32), image.astype(np.float32), full=True)
+nlm_ssim, nlm_ssim_map = ssim(denoised_nlm_image.astype(np.float32), image.astype(np.float32), full=True)
+nlm_PSNR =cv2.PSNR(image.astype(np.float32), denoised_nlm_image.astype(np.float32))
 
 output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
 print('MSE:', MSE, file=output_file)
 print('PSNR:', PSNR, file=output_file)
 print('SSIM:', ssim_value, file=output_file)
+print('NLM_PSNR:', nlm_PSNR, file=output_file)
+print('NLM_SSIM:', nlm_ssim, file=output_file)
 output_file.close()
 
 
 plt.imshow(ssim_map)
 plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d_SSIM_Map.png"%(image_number)))
+plt.close()
+
+plt.imshow(nlm_ssim_map)
+plt.colorbar()
+plt.savefig(os.path.join(results_dir, "image_%d_NLM_SSIM_Map.png"%(image_number)))
 plt.close()
