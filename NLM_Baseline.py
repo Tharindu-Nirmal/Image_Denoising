@@ -12,11 +12,11 @@ step_size = 8
 std_dev = 50
 
 patch_size = tile_w
-patch_distance = 250
-k=0.01
+patch_distance = 300
+k=0.007
 
 
-results_dir = "results/Baseline_NLM/tilw%d_step%d_noise%d_patchdis%d_k%d"%(tile_w,step_size,std_dev, patch_distance, k)
+results_dir = "results/Baseline_NLM/tilw%d_step%d_noise%d_patchdis%d_k%.4f"%(tile_w,step_size,std_dev, patch_distance, k)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
