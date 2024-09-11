@@ -15,11 +15,11 @@ from skimage.metrics import structural_similarity as ssim
 from sklearn.linear_model import ElasticNet
 import spgl1
 
-image_number = 6
+image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 100
+std_dev = 10
 
 results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
@@ -324,14 +324,19 @@ for i, (cluster_key, points) in enumerate(centered_clusters.items()):
     print('Cluster compression when pruning %.2f variance is %.4f'%(t_exp, dynamic_basis.shape[0]/points.shape[0]))
     print('--------------------')
 
-# Approximate x_hat = Psi_k alpha; for each tile x_hat
+# Approximate x_hat = Psi_k alpha; for each tile x_hat, enforcing I have mean coefficient=1
 def fit_to_basis(data_vectors, basis_vectors):
     """ 
     basis_vectors : an nxN array with a basis vector(N-dimensional) in each row 
     data_vectors : an mxN array with m examples of (N-dimensional) data.
     """ 
-    projection_matrix = basis_vectors.T @ (np.linalg.pinv(basis_vectors @ basis_vectors.T) @ basis_vectors)
-    approximations = data_vectors @ projection_matrix
+    mean_vector = basis_vectors[0]   # The first row is the mean vector
+    pca_vectors = basis_vectors[1:]  # The remaining rows are the PCA vectors
+
+    projection_matrix = pca_vectors.T @ (np.linalg.pinv(pca_vectors @ pca_vectors.T) @ pca_vectors)
+    pca_projection = data_vectors @ projection_matrix
+
+    approximations = mean_vector + pca_projection
     errors = np.linalg.norm(data_vectors - approximations , axis=1)
     # print(errors.shape)
     return approximations, errors
