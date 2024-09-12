@@ -13,16 +13,15 @@ from scipy.spatial.distance import cdist
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.metrics import structural_similarity as ssim
 from sklearn.linear_model import ElasticNet
-from PIL import Image
 import spgl1
 
 image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 10
+std_dev = 5
 
-results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d/image%d"%(tile_w,step_size,std_dev,image_number)
+results_dir = "results/NCC_lasso_meanenf/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -30,7 +29,6 @@ if not os.path.exists(results_dir):
 image = cv2.imread(f"Dataset/Image{image_number}.png")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 print(image.shape)
-
 mindim = np.min(image.shape)
 mindim = int((mindim // tile_w) * tile_w)
 image = image[:mindim, :mindim]
@@ -202,27 +200,9 @@ print('shape of labels:',labels.shape, file=output_file)
 print('determinant of W similarity matrix:', np.linalg.det(W), file=output_file)
 output_file.close()
 
-block_size = 128
-block_cnt = int(im_tiles1d.shape[0]/block_size)
-#8
-
-#subplot with a grid of tiles
-fig, axes = plt.subplots(block_cnt, block_cnt, figsize=(30, 30))
-
-# Iterate through each tile and display
-for i in range(block_cnt):
-    for j in range(block_cnt):
-        W_matrix = W[i*block_size:(i+1)*block_size, j*block_size:(j+1)*block_size]
-        normalized_W_matrix = (W_matrix - np.min(W_matrix)) / (np.max(W_matrix) - np.min(W_matrix))
-        axes[i, j].imshow(normalized_W_matrix, cmap='viridis', interpolation='none')
-        axes[i, j].axis('off')  # Turn off axis labels
-
-plt.savefig(os.path.join(results_dir, "image_%d_similarities.png"%(image_number)))
-plt.close()
-
-
 Spectral_cluster_indices = labels
 num_clusters = L_hat
+#Clustering is done................................................................................
 
 def calculate_medoid(cluster):
     """
@@ -238,14 +218,11 @@ def calculate_medoid(cluster):
 
     return medoid
 
-def get_cluster_medoids(data, cluster_indices, patch_size=(tile_w, tile_w), save_examples=True, examples_per_cluster=10):
+def get_cluster_medoids(data, cluster_indices):
     """
     Inputs:
     data: an mxN array of m data vectors (points)
     cluster_indices: an mx1 array of m cluster indices
-    patch_size: tuple, size of the patch to reshape the data (default is 8x8)
-    save_examples: boolean, whether to save example patches or not
-    examples_per_cluster: integer, the number of examples to save from each cluster
 
     Returns:
     clusters: a dictionary, indexed by cluster number and values are clustered arrays of data
@@ -266,40 +243,16 @@ def get_cluster_medoids(data, cluster_indices, patch_size=(tile_w, tile_w), save
     medoids = {cluster: calculate_medoid(np.array(points)) for cluster, points in clusters.items()}
     means = {cluster: np.mean(np.array(points), axis=0) for cluster, points in clusters.items()}
 
-    if save_examples:
-        
-        for cluster, points in clusters.items():
-            cluster_dir = os.path.join(results_dir, f"cluster_{cluster}")
-            if not os.path.exists(cluster_dir):
-                os.makedirs(cluster_dir)
-            
-            # Select patches to save (up to `examples_per_cluster` patches)
-            num_patches = min(len(points), examples_per_cluster)
-            selected_patches = np.array(points)[:num_patches]
-
-            output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
-            print('Number_of_Clusters in Cluster %d: '%(cluster), len(points), file=output_file)
-            output_file.close()
-
-            # Save each selected patch as an image
-            for i, patch in enumerate(selected_patches):
-                patch_image = patch.reshape(patch_size)  # Reshape to 8x8 or specified patch size
-                img = Image.fromarray(patch_image)
-                
-                # Convert to uint8 if necessary (assuming patch values are between 0 and 255)
-                if img.mode != 'L':
-                    img = img.convert('L')
-
-                # Save the patch as an image
-                img.save(os.path.join(cluster_dir, f"patch_{i}.png"))
-
     return clusters, medoids, means
 
 clustered_data, cluster_medoids, cluster_means = get_cluster_medoids(im_tiles1d, Spectral_cluster_indices)
-print ('keys of clustered_data:' ,clustered_data.keys())
-print ('clustered_data[0] has shape' ,np.array(clustered_data[0]).shape)
-print('cluster_medoids[0]  has shape', cluster_medoids[0].shape)
-print ('cluster_means[0] has shape' , cluster_means[0].shape)
+
+output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+print ('keys of clustered_data:' ,clustered_data.keys(), file=output_file)
+print ('clustered_data[0] has shape' ,np.array(clustered_data[0]).shape, file=output_file)
+print('cluster_medoids[0]  has shape', cluster_medoids[0].shape, file=output_file)
+print ('cluster_means[0] has shape' , cluster_means[0].shape, file=output_file)
+output_file.close()
 
 def get_centered_clusters(clustered_data, cluster_means):
     centered_clusters = {cluster: (np.array(clustered_data[cluster])-cluster_means[cluster]) for cluster in clustered_data.keys()}
@@ -307,11 +260,14 @@ def get_centered_clusters(clustered_data, cluster_means):
 
 centered_clusters = get_centered_clusters(clustered_data, cluster_means)
 
-#check for mean zero--> checked
-summa = 0
-for i in range(num_clusters):
-    summa += centered_clusters[i].sum()
-print (summa)
+# #check for mean zero--> checked
+# summa = 0
+# for i in range(num_clusters):
+#     summa += centered_clusters[i].sum()
+
+# output_file = open(results_dir+'/image_%d prints.txt'%(image_number), 'a')
+# print ('confirming centred clusters',summa,file=output_file)
+# output_file.close()
 
 def pca_for_cluster(cluster):
     """ 
@@ -338,13 +294,12 @@ def pca_for_cluster(cluster):
 
 #test pca function
 cluster_pca, expln_var_cum, pca_vectors = pca_for_cluster(centered_clusters[0])
-print(type(cluster_pca), cluster_pca.shape)
-print(pca_vectors.shape)
+# print('cluster [0] type,shape: ',type(cluster_pca), cluster_pca.shape)
+# print(pca_vectors.shape)
 
 num_clusters = len(centered_clusters)
-# fig, axs = plt.subplots(nrows= num_clusters, ncols =1, figsize=(8,4* num_clusters))
 
-#clusters_pcavectors and mean- a set basis(psi), one for each cluster
+#clusters_pca vectors and mean- a set basis(psi), one for each cluster
 t_exp = 0.9
 dynamic_psi = dict()
 fixed_psi = dict()
@@ -369,14 +324,19 @@ for i, (cluster_key, points) in enumerate(centered_clusters.items()):
     print('Cluster compression when pruning %.2f variance is %.4f'%(t_exp, dynamic_basis.shape[0]/points.shape[0]))
     print('--------------------')
 
-# Approximate x_hat = Psi_k alpha; for each tile x_hat
+# Approximate x_hat = Psi_k alpha; for each tile x_hat, enforcing I have mean coefficient=1
 def fit_to_basis(data_vectors, basis_vectors):
     """ 
     basis_vectors : an nxN array with a basis vector(N-dimensional) in each row 
     data_vectors : an mxN array with m examples of (N-dimensional) data.
     """ 
-    projection_matrix = basis_vectors.T @ (np.linalg.pinv(basis_vectors @ basis_vectors.T) @ basis_vectors)
-    approximations = data_vectors @ projection_matrix
+    mean_vector = basis_vectors[0]   # The first row is the mean vector
+    pca_vectors = basis_vectors[1:]  # The remaining rows are the PCA vectors
+
+    projection_matrix = pca_vectors.T @ (np.linalg.pinv(pca_vectors @ pca_vectors.T) @ pca_vectors)
+    pca_projection = data_vectors @ projection_matrix
+
+    approximations = mean_vector + pca_projection
     errors = np.linalg.norm(data_vectors - approximations , axis=1)
     # print(errors.shape)
     return approximations, errors

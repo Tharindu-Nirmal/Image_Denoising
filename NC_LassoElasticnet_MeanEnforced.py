@@ -19,9 +19,9 @@ image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 10
+std_dev = 50
 
-results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
+results_dir = "results/NC_elasticnet_meanenf/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
@@ -142,15 +142,14 @@ for i in range(N):
     A = y_others.T  # Transpose to match dimensions (n, N-1)
     b = y_i.T       # (n,)
 
-    tau = 1
-    # sigma = 100 #fixed sigma
-    # sigma = 0.05 * np.linalg.norm(b, 2)
-    sol_x, resid, grad, info = spgl1.spg_lasso(A, b,tau, verbosity=1)
+     # Set alpha to control regularization, l1_ratio for L1 regularization
+    alpha = 10   # Adjust this value as needed
+    l1_ratio = 1  # 1.0 gives Lasso (L1) regularization only
 
-    # print(type(sol_x)) --> <class 'numpy.ndarray'>
-            
-    result = np.array(sol_x).T
-    # print(result.shape) # (3599,)
+    # Initialize the ElasticNet model with non-negativity constraint
+    enet = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, positive=True, fit_intercept=False, max_iter=5000)
+    enet.fit(A, b)
+    result = enet.coef_
 
     if i % 10 == 0:
         print('%.d th tile result:' % (i), file=output_file)
@@ -393,6 +392,11 @@ approx_image = visualise_approx(im_tiles1d, Spectral_cluster_indices)
 plt.imshow(approx_image)
 plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage.png"%(image_number)))
+plt.close()
+
+plt.imshow(approx_image, cmap='gray', vmin=0, vmax=255)  # Display in grayscale
+plt.axis('off')  # Turn off axis labels if desired
+plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage_Gray.png" % image_number), bbox_inches='tight', pad_inches=0)  # Save without colorbar
 plt.close()
 
 MSE = np.mean(np.square(approx_image.astype(np.float32) - image.astype(np.float32)))

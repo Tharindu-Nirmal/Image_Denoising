@@ -9,11 +9,11 @@ image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 50
+std_dev = 30
 
 patch_size = tile_w
 patch_distance = 300
-k=0.007
+k=0.01
 
 
 results_dir = "results/Baseline_NLM/tilw%d_step%d_noise%d_patchdis%d_k%.4f"%(tile_w,step_size,std_dev, patch_distance, k)
@@ -55,6 +55,11 @@ denoised_image_255 = (denoised_nlm_image * 255).astype(np.uint8)
 plt.imshow(denoised_image_255)
 plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage.png"%(image_number)))
+plt.close()
+
+plt.imshow(denoised_image_255, cmap='gray', vmin=0, vmax=255)  # Display in grayscale
+plt.axis('off')  # Turn off axis labels if desired
+plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage_Gray.png" % image_number), bbox_inches='tight', pad_inches=0)  # Save without colorbar
 plt.close()
 
 MSE = np.mean(np.square(denoised_image_255.astype(np.float32) - image.astype(np.float32)))

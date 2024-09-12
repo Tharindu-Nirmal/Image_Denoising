@@ -542,6 +542,12 @@ plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage.png"%(image_number)))
 plt.close()
 
+plt.imshow(approx_image, cmap='gray', vmin=0, vmax=255)  # Display in grayscale
+plt.axis('off')  # Turn off axis labels if desired
+plt.savefig(os.path.join(results_dir, "image_%d_ApproxImage_Gray.png" % image_number), bbox_inches='tight', pad_inches=0)  # Save without colorbar
+plt.close()
+
+
 MSE = np.mean(np.square(approx_image.astype(np.float32) - image.astype(np.float32)))
 PSNR =cv2.PSNR(image.astype(np.float32), approx_image.astype(np.float32))
 ssim_value, ssim_map = ssim(approx_image.astype(np.float32), image.astype(np.float32), full=True)
