@@ -9,7 +9,7 @@ image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 30
+std_dev = 20
 
 patch_size = tile_w
 patch_distance = 300

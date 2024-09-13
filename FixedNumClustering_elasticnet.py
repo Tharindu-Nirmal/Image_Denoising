@@ -15,7 +15,7 @@ from skimage.metrics import structural_similarity as ssim
 from sklearn.linear_model import ElasticNet
 import spgl1
 
-image_number = 7
+image_number = 9
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8
@@ -30,7 +30,7 @@ image = cv2.imread(f"Dataset/Image{image_number}.png")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 mindim = np.min(image.shape)
-mindim = np.min(image.shape)
+
 mindim = int((mindim // tile_w) * tile_w)
 image = image[:mindim, :mindim]
 print("image shape: ", image.shape)

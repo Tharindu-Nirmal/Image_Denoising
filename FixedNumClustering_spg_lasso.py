@@ -19,7 +19,7 @@ image_number = 3
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 30
+std_dev = 20
 
 results_dir = "results/FixedNum_spgl_lasso/tilw%d_step%d_noise%d"%(tile_w,step_size,std_dev)
 if not os.path.exists(results_dir):
@@ -44,6 +44,11 @@ noisy_image = np.uint8(np.clip(image + np.random.normal(scale=std_dev, size=imag
 plt.imshow(noisy_image)
 plt.colorbar()
 plt.savefig(os.path.join(results_dir, "image_%d.png"%(image_number)), bbox_inches='tight', pad_inches=0)
+plt.close()
+
+plt.imshow(noisy_image, cmap='gray', vmin=0, vmax=255)  # Display in grayscale
+plt.axis('off')  # Turn off axis labels if desired
+plt.savefig(os.path.join(results_dir, "image_%d_NoisyImage_Gray.png" % image_number), bbox_inches='tight', pad_inches=0)  # Save without colorbar
 plt.close()
 
 def return_overlapping_tiles(image, tile_width, step_size):
