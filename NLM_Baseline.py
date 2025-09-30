@@ -5,15 +5,15 @@ import numpy as np
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.metrics import structural_similarity as ssim
 
-image_number = 3
+image_number = 7
 # dimensionality (N) of subspace = 64
 tile_w = 8
 step_size = 8 
-std_dev = 20
+std_dev = 50
 
 patch_size = tile_w
 patch_distance = 300
-k=0.01
+k=0.005
 
 
 results_dir = "results/Baseline_NLM/tilw%d_step%d_noise%d_patchdis%d_k%.4f"%(tile_w,step_size,std_dev, patch_distance, k)
